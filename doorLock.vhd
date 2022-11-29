@@ -3,11 +3,13 @@ USE ieee.std_logic_1164.ALL;
 
 -- Entity
 ENTITY doorLock IS
-    GENERIC (freqdiv : integer := 30); --Periode Clock * freqdiv
     PORT (
         -- Input
         CLK : IN STD_LOGIC;
         Akses_kartu, Pintu_belakang : IN STD_LOGIC;
+        Input_Pass : IN INTEGER;
+        Pass : INOUT INTEGER := 12345678; --password default 12345678
+
         -- Uang_A, Uang_B : IN STD_LOGIC; (GAPAKE)
 
         -- Output
@@ -20,16 +22,9 @@ END doorLock;
 
 -- Architecture
 ARCHITECTURE behavioral OF doorLock IS
-
-    TYPE states IS (IDLE, WAIT_OPEN, OPEN_LOCK, NO_ACCESS, OFFICE, LIMIT, QUIT);
-
-    SIGNAL timer : INTEGER := 0; --TH Timer Initial Value
-    SIGNAL timer_c : INTEGER := 0; --TL Timer Counter
-    SIGNAL timer_i : BOOLEAN := false; --TF Timer Flags
-    SIGNAL timer_en : BOOLEAN := false; --TR Timer Enable
+    TYPE states IS (IDLE, WAIT_OPEN, OPEN_LOCK, NO_ACCESS, OFFICE, LIMIT, S0, S1, S2, QUIT, CHANGE_PASS);
     SIGNAL CS, NS : states;
     SIGNAL X, Y : INTEGER RANGE 0 TO 50;
-
 BEGIN
     sync_proc : PROCESS (CLK, NS)
     BEGIN
@@ -63,21 +58,28 @@ BEGIN
                 END IF;
 
             WHEN WAIT_OPEN => -- mengecek kode akses kartu benar/tidak
-                IF (Akses_kartu(1 TO 8) = "12345678") THEN
+                IF (Input_Pass = Pass) THEN
                     Pintu <= '1';
                     LED_hijau <= '1';
                     LED_merah <= '0';
                     NS <= OPEN_LOCK;
+                ELSIF (Input_Pass = 00000000) THEN --000000000 master key buat ganti kode
+                    NS <= CHANGE_PASS;
+        
                 ELSE
                     NS <= NO_ACCESS;
-                END IF;
+                END if;
 
-            WHEN NO_ACCESS => -- kode salah, pintu tdk dibuka, led merah
-                Pintu <= '0';
-                LED_hijau <= '0';
-                LED_merah <= '1';
+            WHEN CHANGE_PASS => -- mengganti input password menjadi password yang baru
+                Pass <= Input_Pass;
                 NS <= IDLE;
 
+            WHEN NO_ACCESS => -- kode salah, pintu tdk dibuka, led merah
+                        Pintu <= '0';
+                        LED_hijau <= '0';
+                        LED_merah <= '1';
+                        NS <= IDLE;
+                
             WHEN OPEN_LOCK => -- pintu dibuka
                 Pintu <= '1';
                 LED_hijau <= '1';
@@ -120,32 +122,6 @@ BEGIN
 
         END CASE;
         Counter <= cnt;
-    END PROCESS;
-
-    TIMERP : PROCESS (clk) -- timer jika 
-    BEGIN
-        IF (rising_edge(clk)) THEN
-            IF (timer_en AND NOT timer_i) THEN
-                timer_C <= timer_c + 1;
-                IF (timer_c >= timer * freqdiv) THEN
-                    timer_i <= true;
-                END IF;
-                IF (Pintu > 0) THEN
-                    IF (timer_c MOD 20 >= Pintu) THEN
-                        Pintu <= '0';
-                    ELSE
-                        Pintu <= '1';
-                    END IF;
-                END IF;
-            ELSIF (timer_i AND Pintu > 0) THEN
-                Pintu <= '0';
-            END IF;
-        END IF;
-        IF (NOT timer_en) THEN
-            timer_C <= 0;
-            timer_i <= false;
-            Pintu <= '0';
-        END IF;
     END PROCESS;
 
     -- menghitung jumlah pegawai kantor yang masuk ke office room
