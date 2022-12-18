@@ -9,6 +9,7 @@ Fitur dari program ini:
 - Counter untuk menghitung jumlah orang dan Seven Segment sebagai penampil angka
 - LED sebagai sinyal pintu saat terbuka atau tertutup
 
+VIDEO : https://youtube.com/watch?v=hQRUqHAKc6w&si=EnSIkaIECMiOmarE
 
 TODO's
 - [x] Main Program 	:page_facing_up:
